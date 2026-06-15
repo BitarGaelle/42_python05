@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, cast
+from typing import Any, Sequence
 
 
 class DataProcessor(ABC):
@@ -16,15 +16,14 @@ class DataProcessor(ABC):
         pass
 
     def output(self) -> tuple[int, str]:
-        output_tuple = (self.index, self.storage[0])
-        self.index += 1
-        self.storage.remove(self.storage[0])
-        return output_tuple
+        if (len(self.storage) == 0):
+            return (self.index, "")
+        return (self.index, self.storage[0])
 
 
 class NumericProcessor(DataProcessor):
 
-    def validate(self, data: int | float | list[int | float]) -> bool:
+    def validate(self, data: Any) -> bool:
         if isinstance(data, (int, float)):
             return True
         elif isinstance(data, list):
@@ -34,7 +33,7 @@ class NumericProcessor(DataProcessor):
             return True
         return False
 
-    def ingest(self, data: int | float | list[int | float]) -> None:
+    def ingest(self, data: int | float | Sequence[int | float]) -> None:
         valid = self.validate(data)
         if valid:
             if isinstance(data, (int, float)):
@@ -50,7 +49,7 @@ class NumericProcessor(DataProcessor):
 
 class TextProcessor(DataProcessor):
 
-    def validate(self, data: str | list[str]) -> bool:
+    def validate(self, data: Any) -> bool:
         if isinstance(data, str):
             return True
         elif isinstance(data, list):
@@ -60,7 +59,7 @@ class TextProcessor(DataProcessor):
             return True
         return False
 
-    def ingest(self, data: str | list[str]) -> None:
+    def ingest(self, data: Any) -> None:
         valid = self.validate(data)
 
         if valid:
@@ -75,7 +74,7 @@ class TextProcessor(DataProcessor):
 
 class LogProcessor(DataProcessor):
 
-    def validate(self, data: dict[str, str] | list[dict[str, str]]) -> bool:
+    def validate(self, data: Any) -> bool:
         if isinstance(data, dict):
             for key, value in data.items():
                 if not isinstance(key, str) or not isinstance(value, str):
@@ -93,15 +92,17 @@ class LogProcessor(DataProcessor):
             return True
         return False
 
-    def ingest(self, data: dict[str, str] | list[dict[str, str]]) -> None:
+    def ingest(self, data: dict[str, str] | Sequence[dict[str, str]]) -> None:
         valid = self.validate(data)
 
         if valid:
             if isinstance(data, dict):
-                self.storage.append(data)
+                for key, value in data.items():
+                    self.storage.append(f"{key}:{value}")
             else:
                 for item in data:
-                    self.storage.append(item)
+                    for key, value in data.items():
+                        self.storage.append(f"{key}:{value}")
         else:
             raise ValueError("Improper log data")
 
@@ -148,7 +149,7 @@ validation:")
     print(" Extraction 2 values...")
     for i in range(2):
         log_output = log.output()
-        log_dict = cast(dict[str, str], log_output[1])
+        log_dict = log_output[1]
         print(f" Log entry {log_output[0]}: \
 {log_dict['log_level']}: {log_dict['log_message']}")
 
